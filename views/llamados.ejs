@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Llamados — Invernaderos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <p class="brand-mark">Parque ambiental</p>
+      <nav>
+        <a href="/dashboard">Áreas</a>
+        <a href="/llamados" class="active">Llamados</a>
+        <% if (usuario.rol === 'administrador') { %>
+        <a href="/empleados">Empleados</a>
+        <a href="/usuarios">Usuarios</a>
+        <a href="/reportes">Reportes</a>
+        <% } %>
+      </nav>
+      <div class="user-box">
+        <p><%= usuario.nombre || usuario.username %></p>
+        <a href="/logout">Salir</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content-header"><h1>Llamados</h1></header>
+
+      <form action="/llamados" method="GET" class="filter-bar">
+        <select name="tipo">
+          <option value="">Todos los tipos</option>
+          <option value="normal" <%= filtroTipo === 'normal' ? 'selected' : '' %>>Normal</option>
+          <option value="emergencia" <%= filtroTipo === 'emergencia' ? 'selected' : '' %>>Emergencia</option>
+        </select>
+        <select name="area_id">
+          <option value="">Todas las áreas</option>
+          <% areas.forEach(a => { %>
+            <option value="<%= a.id %>" <%= String(filtroArea) === String(a.id) ? 'selected' : '' %>><%= a.nombre %></option>
+          <% }) %>
+        </select>
+        <button type="submit">Filtrar</button>
+      </form>
+
+      <section class="form-card form-card-accent">
+        <h2>Reportar emergencia manual</h2>
+        <form action="/llamados" method="POST" class="inline-form">
+          <select name="area_id" required>
+            <% areas.forEach(a => { %>
+              <option value="<%= a.id %>"><%= a.nombre %></option>
+            <% }) %>
+          </select>
+          <select name="tipo" required>
+            <option value="normal">Normal</option>
+            <option value="emergencia">Emergencia</option>
+          </select>
+          <input type="text" name="descripcion" placeholder="Descripción">
+          <button type="submit">Reportar</button>
+        </form>
+      </section>
+
+      <table class="llamados-table">
+        <thead>
+          <tr><th>Área</th><th>Tipo</th><th>Origen</th><th>Descripción</th><th>Estado</th><th>Fecha</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% llamados.forEach(l => { %>
+            <tr>
+              <td><%= l.area_nombre %></td>
+              <td class="tipo-<%= l.tipo %>"><%= l.tipo %></td>
+              <td><%= l.origen %></td>
+              <td><%= l.descripcion || '-' %></td>
+              <td class="<%= l.atendido ? 'badge-atendido' : 'tipo-emergencia' %>"><%= l.atendido ? 'Atendido' : 'Sin atender' %></td>
+              <td><%= new Date(l.fecha_hora).toLocaleString('es-AR') %></td>
+              <td>
+                <% if (!l.atendido) { %>
+                  <form action="/llamados/<%= l.id %>/atender" method="POST">
+                    <button type="submit" class="btn-outline">Marcar atendido</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

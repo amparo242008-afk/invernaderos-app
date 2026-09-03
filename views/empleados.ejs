@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empleados — Invernaderos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <p class="brand-mark">Parque ambiental</p>
+      <nav>
+        <a href="/dashboard">Áreas</a>
+        <a href="/llamados">Llamados</a>
+        <a href="/empleados" class="active">Empleados</a>
+        <a href="/usuarios">Usuarios</a>
+        <a href="/reportes">Reportes</a>
+      </nav>
+      <div class="user-box">
+        <p><%= usuario.nombre || usuario.username %></p>
+        <a href="/logout">Salir</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content-header"><h1>Empleados</h1></header>
+
+      <section class="form-card">
+        <h2>Agregar empleado</h2>
+        <form action="/empleados" method="POST" class="inline-form">
+          <input type="text" name="nombre" placeholder="Nombre" required>
+          <input type="text" name="apellido" placeholder="Apellido" required>
+          <input type="text" name="dni" placeholder="DNI" required>
+          <input type="text" name="telefono" placeholder="Teléfono">
+          <input type="text" name="tarea" placeholder="Tarea">
+          <select name="area_id">
+            <option value="">Sin área</option>
+            <% areas.forEach(a => { %>
+              <option value="<%= a.id %>"><%= a.nombre %></option>
+            <% }) %>
+          </select>
+          <button type="submit">Agregar</button>
+        </form>
+      </section>
+
+      <table class="llamados-table">
+        <thead>
+          <tr><th>Nombre</th><th>DNI</th><th>Teléfono</th><th>Tarea</th><th>Área</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% empleados.forEach(e => { %>
+            <tr>
+              <td><%= e.nombre %> <%= e.apellido %></td>
+              <td><%= e.dni %></td>
+              <td><%= e.telefono || '-' %></td>
+              <td><%= e.tarea || '-' %></td>
+              <td><%= e.area_nombre || '-' %></td>
+              <td style="white-space: nowrap;">
+                <button type="button" class="btn-outline" onclick="abrirModalEmpleado('<%= e.id %>', '<%= e.nombre %>', '<%= e.apellido %>', '<%= e.dni %>', '<%= e.telefono || '' %>', '<%= e.email || '' %>', '<%= e.tarea || '' %>', '<%= e.area_id || '' %>')">Editar</button>
+                <form action="/empleados/<%= e.id %>/eliminar" method="POST" style="display:inline;">
+                  <button type="submit" class="btn-eliminar" onclick="return confirm('¿Eliminar este empleado?')">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <!-- Modal de Edición Empleado -->
+<div id="modalEmpleado" class="modal-custom" style="display:none;">
+  <div class="modal-content-custom">
+    <h3>Editar Empleado</h3>
+    <form id="formEmpleado" method="POST" action="">
+      <div class="form-group">
+        <label>Nombre:</label>
+        <input type="text" name="nombre" id="emp_nombre" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Apellido:</label>
+        <input type="text" name="apellido" id="emp_apellido" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>DNI:</label>
+        <input type="text" name="dni" id="emp_dni" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Teléfono:</label>
+        <input type="text" name="telefono" id="emp_telefono" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Email:</label>
+        <input type="email" name="email" id="emp_email" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Tarea:</label>
+        <input type="text" name="tarea" id="emp_tarea" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Área:</label>
+        <select name="area_id" id="emp_area_id" class="form-control">
+          <option value="">Sin área</option>
+          <% areas.forEach(a => { %>
+            <option value="<%= a.id %>"><%= a.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-success">Guardar Cambios</button>
+      <button type="button" class="btn btn-secondary" onclick="cerrarModalEmpleado()">Cancelar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirModalEmpleado(id, nombre, apellido, dni, telefono, email, tarea, area_id) {
+    document.getElementById('formEmpleado').action = '/empleados/' + id + '/editar';
+    document.getElementById('emp_nombre').value = nombre;
+    document.getElementById('emp_apellido').value = apellido;
+    document.getElementById('emp_dni').value = dni;
+    document.getElementById('emp_telefono').value = telefono;
+    document.getElementById('emp_email').value = email;
+    document.getElementById('emp_tarea').value = tarea;
+    document.getElementById('emp_area_id').value = area_id;
+    document.getElementById('modalEmpleado').style.display = 'block';
+}
+
+function cerrarModalEmpleado() {
+    document.getElementById('modalEmpleado').style.display = 'none';
+}
+</script>
+</body>
+</html>
