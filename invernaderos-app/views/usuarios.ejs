@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuarios — Invernaderos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <p class="brand-mark">Parque ambiental</p>
+      <nav>
+        <a href="/dashboard">Áreas</a>
+        <a href="/llamados">Llamados</a>
+        <a href="/empleados">Empleados</a>
+        <a href="/usuarios" class="active">Usuarios</a>
+        <a href="/reportes">Reportes</a>
+      </nav>
+      <div class="user-box">
+        <p><%= usuario.nombre || usuario.username %></p>
+        <a href="/logout">Salir</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content-header"><h1>Usuarios del sistema</h1></header>
+
+      <section class="form-card">
+        <h2>Crear usuario</h2>
+        <form action="/usuarios" method="POST" class="inline-form">
+          <input type="text" name="username" placeholder="Usuario" required>
+          <input type="password" name="password" placeholder="Contraseña" required>
+          <select name="rol" required>
+            <option value="administrador">Administrador</option>
+            <option value="generico">Genérico / empleado</option>
+          </select>
+          <select name="empleado_id">
+            <option value="">Sin vincular a empleado</option>
+            <% empleados.forEach(e => { %>
+              <option value="<%= e.id %>"><%= e.nombre %> <%= e.apellido %></option>
+            <% }) %>
+          </select>
+          <button type="submit">Crear</button>
+        </form>
+      </section>
+
+      <table class="llamados-table">
+        <thead>
+          <tr><th>Usuario</th><th>Rol</th><th>Empleado vinculado</th><th>Activo</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% usuarios.forEach(u => { %>
+            <tr>
+              <td><%= u.username %></td>
+              <td><%= u.rol %></td>
+              <td><%= u.nombre ? `${u.nombre} ${u.apellido}` : '-' %></td>
+              <td><%= u.activo ? 'Sí' : 'No' %></td>
+              <td>
+                <form action="/usuarios/<%= u.id %>/eliminar" method="POST">
+                  <button type="submit" class="btn-eliminar">Eliminar</button>
+                  <button type="button" class="btn btn-warning btn-sm" onclick="abrirModalEditar('<%= user.id %>', '<%= user.nombre %>', '<%= user.apellido %>', '<%= user.dni %>', '<%= user.telefono %>', '<%= user.email %>', '<%= user.rol %>', '<%= user.area %>')">
+  <i class="fas fa-edit"></i> Editar
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </main>
+  </div>
+  <!-- Modal de Edición -->
+<div id="modalEditar" class="modal-custom" style="display:none;">
+  <div class="modal-content-custom">
+    <h3>Editar Usuario</h3>
+    <form id="formEditar" method="POST" action="">
+      <div class="form-group">
+        <label>Nombre:</label>
+        <input type="text" name="nombre" id="edit_nombre" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Apellido:</label>
+        <input type="text" name="apellido" id="edit_apellido" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>DNI:</label>
+        <input type="text" name="dni" id="edit_dni" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Teléfono:</label>
+        <input type="text" name="telefono" id="edit_telefono" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Email:</label>
+        <input type="email" name="email" id="edit_email" required class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Rol:</label>
+        <select name="rol" id="edit_rol" class="form-control">
+          <option value="empleado">Empleado</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Área:</label>
+        <input type="text" name="area" id="edit_area" class="form-control">
+      </div>
+      <button type="submit" class="btn btn-success">Guardar Cambios</button>
+      <button type="button" class="btn btn-secondary" onclick="cerrarModalEditar()">Cancelar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirModalEditar(id, nombre, apellido, dni, telefono, email, rol, area) {
+    document.getElementById('formEditar').action = '/usuarios/editar/' + id;
+    document.getElementById('edit_nombre').value = nombre;
+    document.getElementById('edit_apellido').value = apellido;
+    document.getElementById('edit_dni').value = dni;
+    document.getElementById('edit_telefono').value = telefono;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_rol').value = rol;
+    document.getElementById('edit_area').value = area;
+    document.getElementById('modalEditar').style.display = 'block';
+}
+
+function cerrarModalEditar() {
+    document.getElementById('modalEditar').style.display = 'none';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes — Invernaderos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <p class="brand-mark">Parque ambiental</p>
+      <nav>
+        <a href="/dashboard">Áreas</a>
+        <a href="/llamados">Llamados</a>
+        <a href="/empleados">Empleados</a>
+        <a href="/usuarios">Usuarios</a>
+        <a href="/reportes" class="active">Reportes</a>
+      </nav>
+      <div class="user-box">
+        <p><%= usuario.nombre || usuario.username %></p>
+        <a href="/logout">Salir</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content-header"><h1>Reportes</h1></header>
+
+      <form action="/reportes" method="GET" class="inline-form">
+        <select name="area_id">
+          <option value="">Todas las áreas</option>
+          <% areas.forEach(a => { %>
+            <option value="<%= a.id %>" <%= String(filtros.area_id) === String(a.id) ? 'selected' : '' %>><%= a.nombre %></option>
+          <% }) %>
+        </select>
+        <select name="tipo">
+          <option value="">Todos los tipos</option>
+          <option value="normal" <%= filtros.tipo === 'normal' ? 'selected' : '' %>>Normal</option>
+          <option value="emergencia" <%= filtros.tipo === 'emergencia' ? 'selected' : '' %>>Emergencia</option>
+        </select>
+        <input type="date" name="desde" value="<%= filtros.desde %>">
+        <input type="date" name="hasta" value="<%= filtros.hasta %>">
+        <button type="submit">Filtrar</button>
+      </form>
+
+      <table class="llamados-table">
+        <thead>
+          <tr><th>Tipo</th><th>Estado</th><th>Cantidad</th></tr>
+        </thead>
+        <tbody>
+          <% resumen.forEach(r => { %>
+            <tr>
+              <td class="tipo-<%= r.tipo %>"><%= r.tipo %></td>
+              <td><%= r.atendido ? 'Atendido' : 'Sin atender' %></td>
+              <td><%= r.cantidad %></td>
+            </tr>
+          <% }) %>
+          <% if (resumen.length === 0) { %>
+            <tr><td colspan="3">No hay llamados que coincidan con el filtro.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+
+      <p class="pendiente-nota">
+        Exportar a PDF/CSV: pendiente — próximo paso una vez que esté lo esencial andando.
+      </p>
+    </main>
+  </div>
+  <!-- Cargar la librería Chart.js desde Internet -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Estructura HTML de los Gráficos -->
+<div class="contenedor-estadisticas" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 20px;">
+  <div class="tarjeta-grafico" style="background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 550px;">
+    <h3 style="text-align: center; color: #333;">Historial de Temperatura y Humedad (°C / %)</h3>
+    <canvas id="graficoLineasTempHum"></canvas>
+  </div>
+
+  <div class="tarjeta-grafico" style="background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
+    <h3 style="text-align: center; color: #333;">Distribución de Riego por Invernadero</h3>
+    <canvas id="graficoTortaRiego"></canvas>
+  </div>
+</div>
+
+<!-- Código JavaScript para renderizar los gráficos -->
+<script>
+  // 1. Gráfico de Líneas (Evolución de Temperatura y Humedad)
+  const ctxLineas = document.getElementById('graficoLineasTempHum').getContext('2d');
+  new Chart(ctxLineas, {
+    type: 'line',
+    data: {
+      labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'],
+      datasets: [
+        {
+          label: 'Temperatura (°C)',
+          data: [18, 21, 26, 28, 25, 22],
+          borderColor: '#e74c3c',
+          backgroundColor: 'rgba(231, 76, 60, 0.2)',
+          fill: true,
+          tension: 0.3
+        },
+        {
+          label: 'Humedad (%)',
+          data: [70, 65, 50, 48, 55, 62],
+          borderColor: '#3498db',
+          backgroundColor: 'rgba(52, 152, 219, 0.2)',
+          fill: true,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' }
+      }
+    }
+  });
+
+  // 2. Gráfico de Torta / Donut (Distribución de riego o estados)
+  const ctxTorta = document.getElementById('graficoTortaRiego').getContext('2d');
+  new Chart(ctxTorta, {
+    type: 'doughnut',
+    data: {
+      labels: ['Invernadero A (Tomates)', 'Invernadero B (Hojas)', 'Invernadero C (Plantines)'],
+      datasets: [{
+        data: [40, 35, 25],
+        backgroundColor: ['#2ecc71', '#f1c40f', '#9b59b6']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+</script>
+</body>
+</html>
