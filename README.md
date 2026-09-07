@@ -54,3 +54,18 @@ Insertá manualmente en pgAdmin:
 - Pantalla de reportes con gráficos y exportación a PDF/CSV
 - Conectar el ESP32 real (el endpoint `POST /api/lecturas` ya está listo
   y probado, falta cargar el `.ino` en la placa)
+
+
+
+
+1) La base de datos en GitHub ✓
+Qué hice: armé un archivo de respaldo de toda tu BD en database/invernaderos_backup.sql y lo subí al repo (ya está en GitHub, rama main). Ese archivo contiene todo: áreas, empleados, sensores, lecturas, rangos y también tus usuarios con los logins (vas a poder entrar con los mismos usuarios que usás en tu casa).
+En la escuela (en la PC de la escuela):
+1. Instalá PostgreSQL igual que en tu casa (o pedí que esté instalado), con pgAdmin.
+2. En pgAdmin creá una base vacía que se llame invernaderos (clic derecho en Databases → Create → Database, nombre invernaderos).
+3. git clone tu repo en esa PC (o copiá toda la carpeta del proyecto).
+4. Restaurá el backup: en pgAdmin, clic derecho sobre la base invernaderos → Restore…, elegí el archivo invernaderos_backup.sql y dale. Todo el contenido vuelve.
+5. Creá el archivo .env con el password de postgres de ESA computadora (no se sube a GitHub a propósito, es secreto). Copialo igual que el tuyo pero cambiá DB_PASSWORD.
+6. npm install y npm start, entrá a localhost:3000 y listo, vas a ver todo cargado.
+Importante: ese backup tiene datos personales (DNI, teléfonos). Dejá tu repo en privado en GitHub.
+Nota: los cambios que hicimos antes ("Reportes para empleados") siguen en tu máquina pero no subidos. ¿Querés que los suba también así los tenés en la escuela?
