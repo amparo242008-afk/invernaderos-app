@@ -351,8 +351,9 @@ app.post('/usuarios/:id/eliminar', requiereAdmin, async (req, res) => {
 
 // ============================================
 // REPORTES: conteo de llamados con filtros
+// (lo ven tanto administradores como empleados)
 // ============================================
-app.get('/reportes', requiereAdmin, async (req, res) => {
+app.get('/reportes', requiereLogin, async (req, res) => {
   const { area_id, tipo, desde, hasta } = req.query;
   const condiciones = [];
   const valores = [];
