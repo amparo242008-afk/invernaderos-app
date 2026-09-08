@@ -15,11 +15,12 @@
       <nav>
         <a href="/dashboard">Áreas</a>
         <a href="/llamados">Llamados</a>
+        <a href="/reportes" class="active">Reportes</a>
         <% if (usuario.rol === 'administrador') { %>
         <a href="/empleados">Empleados</a>
         <a href="/usuarios">Usuarios</a>
+        <a href="/parametros">Parámetros</a>
         <% } %>
-        <a href="/reportes" class="active">Reportes</a>
       </nav>
       <div class="user-box">
         <p><%= usuario.nombre || usuario.username %></p>

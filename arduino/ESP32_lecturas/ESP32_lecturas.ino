@@ -13,6 +13,8 @@ const int SENSOR_ID_HUM = 2;
 #define DHTTYPE DHT11
 DHT dht(PIN_DHT, DHTTYPE);
 
+#define PIN_BUZZER 8
+
 const unsigned long INTERVALO_MS = 30000UL;
 unsigned long ultimaLectura = 0;
 
@@ -35,7 +37,7 @@ void conectarWiFi() {
   }
 }
 
-bool enviarLectura(int sensorId, float valor) {
+bool enviarLectura(int sensorId, float valor, bool* alerta) {
   if (WiFi.status() != WL_CONNECTED) {
     return false;
   }
@@ -44,13 +46,42 @@ bool enviarLectura(int sensorId, float valor) {
   http.addHeader("Content-Type", "application/json");
   String body = "{\"sensor_id\":" + String(sensorId) + ",\"valor\":" + String(valor, 2) + "}";
   int codigo = http.POST(body);
-  Serial.printf("sensor %d = %.2f -> HTTP %d\n", sensorId, valor, codigo);
+  if (codigo > 0) {
+    String respuesta = http.getString();
+    *alerta = respuesta.indexOf("\"alerta\":true") != -1;
+    Serial.printf("sensor %d = %.2f -> HTTP %d %s\n", sensorId, valor, codigo, *alerta ? "(FUERA DE RANGO)" : "");
+  } else {
+    *alerta = false;
+    Serial.printf("sensor %d = %.2f -> HTTP %d\n", sensorId, valor, codigo);
+  }
   http.end();
   return codigo == 201;
 }
 
+void sonarAlarma() {
+  Serial.println("ALARMA: lectura fuera de rango");
+  for (int i = 0; i < 5; i++) {
+    tone(PIN_BUZZER, 2200);
+    delay(200);
+    noTone(PIN_BUZZER);
+    delay(200);
+  }
+}
+
+void beepInicio() {
+  for (int i = 0; i < 3; i++) {
+    tone(PIN_BUZZER, 1500);
+    delay(150);
+    noTone(PIN_BUZZER);
+    delay(100);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
+  beepInicio();
   dht.begin();
   conectarWiFi();
 }
@@ -64,7 +95,12 @@ void loop() {
       Serial.println("Error leyendo el DHT11");
       return;
     }
-    enviarLectura(SENSOR_ID_TEMP, temp);
-    enviarLectura(SENSOR_ID_HUM, hum);
+    bool alertaTemp = false;
+    bool alertaHum = false;
+    enviarLectura(SENSOR_ID_TEMP, temp, &alertaTemp);
+    enviarLectura(SENSOR_ID_HUM, hum, &alertaHum);
+    if (alertaTemp || alertaHum) {
+      sonarAlarma();
+    }
   }
 }

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parámetros — Invernaderos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <p class="brand-mark">Parque ambiental</p>
+      <nav>
+        <a href="/dashboard">Áreas</a>
+        <a href="/llamados">Llamados</a>
+        <a href="/reportes">Reportes</a>
+        <a href="/empleados">Empleados</a>
+        <a href="/usuarios">Usuarios</a>
+        <a href="/parametros" class="active">Parámetros</a>
+      </nav>
+      <div class="user-box">
+        <p><%= usuario.nombre || usuario.username %></p>
+        <a href="/logout">Salir</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content-header"><h1>Parámetros de sensores</h1></header>
+
+      <p class="subtitle" style="margin-bottom: 16px;">
+        Definí el rango normal por área y tipo de sensor. Cuando una lectura queda fuera del rango,
+        el sistema genera un llamado de emergencia y activa la buzzer del ESP32.
+      </p>
+
+      <section class="form-card">
+        <h2>Agregar parámetro</h2>
+        <form action="/parametros" method="POST" class="inline-form">
+          <select name="area_id" required>
+            <option value="">Seleccioná un área</option>
+            <% areas.forEach(a => { %>
+              <option value="<%= a.id %>"><%= a.nombre %></option>
+            <% }) %>
+          </select>
+          <select name="tipo_sensor" required>
+            <option value="temperatura">Temperatura</option>
+            <option value="humedad">Humedad</option>
+          </select>
+          <input type="number" step="0.01" name="valor_min" placeholder="Mínimo" required>
+          <input type="number" step="0.01" name="valor_max" placeholder="Máximo" required>
+          <button type="submit">Agregar</button>
+        </form>
+      </section>
+
+      <table class="llamados-table">
+        <thead>
+          <tr><th>Área</th><th>Tipo</th><th>Mínimo</th><th>Máximo</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% parametros.forEach(p => { %>
+            <tr>
+              <td><%= p.area_nombre %></td>
+              <td><%= p.tipo_sensor %></td>
+              <td><%= p.valor_min %></td>
+              <td><%= p.valor_max %></td>
+              <td style="white-space: nowrap;">
+                <button type="button" class="btn-outline" onclick="abrirModal('<%= p.id %>', '<%= p.area_id %>', '<%= p.tipo_sensor %>', '<%= p.valor_min %>', '<%= p.valor_max %>')">Editar</button>
+                <form action="/parametros/<%= p.id %>/eliminar" method="POST" style="display:inline;">
+                  <button type="submit" class="btn-eliminar" onclick="return confirm('¿Eliminar este parámetro?')">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+          <% if (parametros.length === 0) { %>
+            <tr><td colspan="5">Todavía no hay parámetros cargados. Agregá uno arriba para configurar las alertas.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <div id="modalParametro" class="modal-custom" style="display:none;">
+    <div class="modal-content-custom">
+      <h3>Editar parámetro</h3>
+      <form id="formParametro" method="POST" action="">
+        <div class="form-group">
+          <label>Área:</label>
+          <select name="area_id" id="p_area_id" class="form-control" required>
+            <% areas.forEach(a => { %>
+              <option value="<%= a.id %>"><%= a.nombre %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de sensor:</label>
+          <select name="tipo_sensor" id="p_tipo_sensor" class="form-control" required>
+            <option value="temperatura">Temperatura</option>
+            <option value="humedad">Humedad</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mínimo:</label>
+          <input type="number" step="0.01" name="valor_min" id="p_valor_min" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Máximo:</label>
+          <input type="number" step="0.01" name="valor_max" id="p_valor_max" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-success">Guardar Cambios</button>
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
+<script>
+function abrirModal(id, area_id, tipo_sensor, valor_min, valor_max) {
+    document.getElementById('formParametro').action = '/parametros/' + id + '/editar';
+    document.getElementById('p_area_id').value = area_id;
+    document.getElementById('p_tipo_sensor').value = tipo_sensor;
+    document.getElementById('p_valor_min').value = valor_min;
+    document.getElementById('p_valor_max').value = valor_max;
+    document.getElementById('modalParametro').style.display = 'block';
+}
+
+function cerrarModal() {
+    document.getElementById('modalParametro').style.display = 'none';
+}
+</script>
+</body>
+</html>

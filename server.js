@@ -388,6 +388,67 @@ app.get('/reportes', requiereLogin, async (req, res) => {
 });
 
 // ============================================
+// PARÁMETROS DE SENSORES (rangos_config):
+// definen cuándo la lectura dispara la alerta/buzzer
+// ============================================
+app.get('/parametros', requiereAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT rc.*, a.nombre AS area_nombre
+      FROM rangos_config rc
+      JOIN areas a ON a.id = rc.area_id
+      ORDER BY a.nombre, rc.tipo_sensor
+    `);
+    const areas = await pool.query('SELECT id, nombre FROM areas ORDER BY nombre');
+    res.render('parametros', {
+      usuario: req.session.usuario,
+      parametros: result.rows,
+      areas: areas.rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al cargar parámetros');
+  }
+});
+
+app.post('/parametros', requiereAdmin, async (req, res) => {
+  const { area_id, tipo_sensor, valor_min, valor_max } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO rangos_config (area_id, tipo_sensor, valor_min, valor_max)
+       VALUES ($1, $2, $3, $4)`,
+      [area_id, tipo_sensor, valor_min, valor_max]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/parametros');
+});
+
+app.post('/parametros/:id/editar', requiereAdmin, async (req, res) => {
+  const { area_id, tipo_sensor, valor_min, valor_max } = req.body;
+  try {
+    await pool.query(
+      `UPDATE rangos_config SET area_id = $1, tipo_sensor = $2, valor_min = $3, valor_max = $4
+       WHERE id = $5`,
+      [area_id, tipo_sensor, valor_min, valor_max, req.params.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/parametros');
+});
+
+app.post('/parametros/:id/eliminar', requiereAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM rangos_config WHERE id = $1', [req.params.id]);
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/parametros');
+});
+
+// ============================================
 // API PÚBLICA: acá le pega el ESP32 (sin login, es un dispositivo, no una persona)
 // ============================================
 app.post('/api/lecturas', async (req, res) => {
@@ -395,6 +456,8 @@ app.post('/api/lecturas', async (req, res) => {
   if (!sensor_id || valor === undefined) {
     return res.status(400).json({ error: 'Faltan sensor_id o valor' });
   }
+
+  let alerta = false;
 
   try {
     await pool.query('INSERT INTO lecturas (sensor_id, valor) VALUES ($1, $2)', [sensor_id, valor]);
@@ -413,6 +476,7 @@ app.post('/api/lecturas', async (req, res) => {
     if (rangoResult.rows.length > 0) {
       const { valor_min, valor_max } = rangoResult.rows[0];
       if (valor < valor_min || valor > valor_max) {
+        alerta = true;
         await pool.query(
           `INSERT INTO llamados (area_id, origen, sensor_id, tipo, descripcion)
            VALUES ($1, 'sensor', $2, 'emergencia', $3)`,
@@ -421,7 +485,7 @@ app.post('/api/lecturas', async (req, res) => {
       }
     }
 
-    res.status(201).json({ ok: true });
+    res.status(201).json({ ok: true, alerta });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar la lectura' });
