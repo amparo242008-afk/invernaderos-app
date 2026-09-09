@@ -67,6 +67,21 @@ async function main() {
     console.log('ADMIN_PASSWORD no definido. Sin administrador por defecto.');
   }
 
+  // Si la base está vacía (no hay áreas cargadas), se cargan los datos de
+  // ejemplo de seed.sql para que el dashboard muestre contenido apenas se
+  // despliega. No corre si ya hay datos (por ejemplo tras restaurar un backup).
+  const areasCount = await pool.query('SELECT COUNT(*) AS total FROM areas');
+  if (Number(areasCount.rows[0].total) === 0) {
+    const seed = fs.readFileSync(path.join(__dirname, 'seed.sql'), 'utf8');
+    const seedSentencias = dividirSentencias(seed);
+    for (const s of seedSentencias) {
+      await pool.query(s);
+    }
+    console.log('Base vacía: datos de ejemplo (seed.sql) cargados.');
+  } else {
+    console.log('Las áreas ya tienen datos, no se carga el seed.');
+  }
+
   console.log('Setup de base de datos terminado.');
   await pool.end();
 }

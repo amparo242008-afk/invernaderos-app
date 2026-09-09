@@ -19,10 +19,11 @@ INSERT INTO empleados (nombre, apellido, dni, telefono, email, tarea, area_id) V
   ('Carlos', 'Ramírez', '26555666', '3515550404', 'carlosramirez@parque.com', 'Vivero de árboles', 4);
 
 -- Usuarios del sistema (contraseña de ejemplo: admin123 para admin, empleado123 para el otro)
--- admin -> rol administrador
+-- Los que ya existan (por ejemplo el admin creado por db-setup.js) se respetan.
 INSERT INTO usuarios (empleado_id, username, password_hash, rol, activo) VALUES
   (1, 'admin', '$2b$10$K9xsObAEn3eA8zRF0Osay.czjjHnkWP4LnxWr9QzdCBtrv/1htcI6', 'administrador', true),
-  (2, 'jperez', '$2b$10$K9xsObAEn3eA8zRF0Osay.czjjHnkWP4LnxWr9QzdCBtrv/1htcI6', 'generico', true);
+  (2, 'jperez', '$2b$10$K9xsObAEn3eA8zRF0Osay.czjjHnkWP4LnxWr9QzdCBtrv/1htcI6', 'generico', true)
+ON CONFLICT (username) DO NOTHING;
 
 -- Sensores por área
 INSERT INTO sensores (area_id, tipo, codigo_dispositivo, activo) VALUES
