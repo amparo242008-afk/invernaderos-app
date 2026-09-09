@@ -12,8 +12,15 @@ const CVE_DUPLICADO = '42P07';
 function dividirSentencias(sql) {
   return sql
     .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--') && !/^\\/.test(s));
+    .map(s =>
+      s
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && !l.startsWith('--') && !/^\\/.test(l))
+        .join('\n')
+        .trim()
+    )
+    .filter(s => s.length > 0);
 }
 
 async function main() {
