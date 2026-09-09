@@ -41,11 +41,14 @@ async function main() {
   }
 
   const usuarios = await pool.query('SELECT COUNT(*) AS total FROM usuarios');
-  if (Number(usuarios.rows[0].total) === 0) {
-    const user = process.env.ADMIN_USER || 'admin';
-    const pass = process.env.ADMIN_PASSWORD;
-    if (pass && pass.length > 0) {
-      const hash = bcrypt.hashSync(pass, 10);
+  const hayUsuarios = Number(usuarios.rows[0].total) > 0;
+
+  const user = process.env.ADMIN_USER || 'admin';
+  const pass = process.env.ADMIN_PASSWORD;
+
+  if (pass && pass.length > 0) {
+    const hash = bcrypt.hashSync(pass, 10);
+    if (!hayUsuarios) {
       await pool.query(
         `INSERT INTO usuarios (username, password_hash, rol, activo)
          VALUES ($1, $2, 'administrador', true)`,
@@ -53,10 +56,15 @@ async function main() {
       );
       console.log(`Usuario administrador "${user}" creado.`);
     } else {
-      console.log('No hay usuarios. Definí ADMIN_PASSWORD para crear el administrador inicial.');
+      await pool.query(
+        `UPDATE usuarios SET password_hash = $1
+         WHERE username = $2 AND rol = 'administrador'`,
+        [hash, user]
+      );
+      console.log(`Contraseña del administrador "${user}" sincronizada con ADMIN_PASSWORD.`);
     }
   } else {
-    console.log('Ya hay usuarios en la base, no se crea ninguno.');
+    console.log('ADMIN_PASSWORD no definido. Sin administrador por defecto.');
   }
 
   console.log('Setup de base de datos terminado.');
