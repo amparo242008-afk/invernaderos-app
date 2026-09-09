@@ -2,12 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const PDFDocument = require('pdfkit');
 const pool = require('./db');
+const { notificarAlerta } = require('./notificaciones');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
+app.set('trust proxy', 1);
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // para que el ESP32 pueda mandar JSON
@@ -82,16 +85,23 @@ app.get('/dashboard', requiereLogin, async (req, res) => {
   try {
     const areasResult = await pool.query(`
       SELECT a.id, a.nombre,
-             s.tipo,
-             l.valor,
+             temp.valor AS temp_val,
+             hum.valor AS hum_val,
              resp.nombre AS responsable_nombre,
              resp.apellido AS responsable_apellido
       FROM areas a
-      LEFT JOIN sensores s ON s.area_id = a.id
       LEFT JOIN LATERAL (
-        SELECT valor FROM lecturas WHERE sensor_id = s.id
-        ORDER BY fecha_hora DESC LIMIT 1
-      ) l ON true
+        SELECT l.valor
+        FROM lecturas l
+        JOIN sensores s ON s.id = l.sensor_id AND s.area_id = a.id AND s.tipo = 'temperatura'
+        ORDER BY l.fecha_hora DESC LIMIT 1
+      ) temp ON true
+      LEFT JOIN LATERAL (
+        SELECT l.valor
+        FROM lecturas l
+        JOIN sensores s ON s.id = l.sensor_id AND s.area_id = a.id AND s.tipo = 'humedad'
+        ORDER BY l.fecha_hora DESC LIMIT 1
+      ) hum ON true
       LEFT JOIN LATERAL (
         SELECT nombre, apellido FROM empleados WHERE area_id = a.id LIMIT 1
       ) resp ON true
@@ -289,6 +299,17 @@ app.post('/llamados', requiereLogin, async (req, res) => {
        VALUES ($1, 'empleado', $2, $3, $4)`,
       [area_id, req.session.usuario.empleado_id, tipo, descripcion]
     );
+
+    if (tipo === 'emergencia') {
+      const areaResult = await pool.query('SELECT nombre FROM areas WHERE id = $1', [area_id]);
+      notificarAlerta({
+        area: areaResult.rows[0] ? areaResult.rows[0].nombre : String(area_id),
+        tipo: 'emergencia',
+        origen: 'empleado',
+        descripcion: descripcion || 'Emergencia reportada manualmente',
+      }).then(resultado => console.log('Notificación:', JSON.stringify(resultado)))
+        .catch(err => console.error('Error al notificar:', err));
+    }
   } catch (err) {
     console.error(err);
   }
@@ -353,16 +374,39 @@ app.post('/usuarios/:id/eliminar', requiereAdmin, async (req, res) => {
 // REPORTES: conteo de llamados con filtros
 // (lo ven tanto administradores como empleados)
 // ============================================
-app.get('/reportes', requiereLogin, async (req, res) => {
-  const { area_id, tipo, desde, hasta } = req.query;
+function buildFiltrosLLamados(filtros = {}) {
   const condiciones = [];
   const valores = [];
 
-  if (area_id) { valores.push(area_id); condiciones.push(`l.area_id = $${valores.length}`); }
-  if (tipo) { valores.push(tipo); condiciones.push(`l.tipo = $${valores.length}`); }
-  if (desde) { valores.push(desde); condiciones.push(`l.fecha_hora >= $${valores.length}`); }
-  if (hasta) { valores.push(hasta); condiciones.push(`l.fecha_hora <= $${valores.length}`); }
+  if (filtros.area_id) { valores.push(filtros.area_id); condiciones.push(`l.area_id = $${valores.length}`); }
+  if (filtros.tipo) { valores.push(filtros.tipo); condiciones.push(`l.tipo = $${valores.length}`); }
+  if (filtros.desde) { valores.push(filtros.desde); condiciones.push(`l.fecha_hora >= $${valores.length}`); }
+  if (filtros.hasta) { valores.push(filtros.hasta); condiciones.push(`l.fecha_hora <= $${valores.length}`); }
+
   const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+  return { where, valores };
+}
+
+function truncarParaPdf(texto, max) {
+  texto = String(texto == null ? '' : texto).replace(/\s+/g, ' ').trim();
+  return texto.length > max ? texto.slice(0, max - 1) + '…' : texto;
+}
+
+function dibujarEncabezadosPdf(doc, headers, x0, ancho, y) {
+  doc.font('Helvetica-Bold').fontSize(8);
+  let x = x0;
+  headers.forEach(h => {
+    doc.rect(x, y, h.width, 18).fill('#2e7d32');
+    doc.fill('#ffffff').text(h.label, x + 4, y + 5, { width: h.width - 8 });
+    x += h.width;
+  });
+  doc.fillColor('#000000');
+  return y + 18;
+}
+
+app.get('/reportes', requiereLogin, async (req, res) => {
+  const { area_id, tipo, desde, hasta } = req.query;
+  const { where, valores } = buildFiltrosLLamados(req.query);
 
   try {
     const resumen = await pool.query(`
@@ -384,6 +428,111 @@ app.get('/reportes', requiereLogin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error al cargar reportes');
+  }
+});
+
+// Exportación de reportes a CSV o PDF (respeta los mismos filtros de la pantalla)
+app.get('/reportes/exportar', requiereLogin, async (req, res) => {
+  const formato = req.query.formato || 'csv';
+  const { where, valores } = buildFiltrosLLamados(req.query);
+
+  try {
+    const result = await pool.query(
+      `SELECT l.*, a.nombre AS area_nombre,
+              emp.nombre AS atendido_nombre, emp.apellido AS atendido_apellido
+       FROM llamados l
+       JOIN areas a ON a.id = l.area_id
+       LEFT JOIN empleados emp ON emp.id = l.atendido_por
+       ${where}
+       ORDER BY l.fecha_hora DESC`,
+      valores
+    );
+
+    if (formato === 'csv') {
+      const columnas = ['ID', 'Área', 'Tipo', 'Origen', 'Descripción', 'Estado', 'Fecha', 'Atendido por'];
+      const filas = result.rows.map(l => [
+        l.id,
+        l.area_nombre,
+        l.tipo,
+        l.origen,
+        truncarParaPdf(l.descripcion, 120).replace(/;/g, ' '),
+        l.atendido ? 'Atendido' : 'Sin atender',
+        new Date(l.fecha_hora).toLocaleString('es-AR'),
+        l.atendido ? `${l.atendido_nombre || ''} ${l.atendido_apellido || ''}`.trim() : '',
+      ]);
+      const csv = [columnas.join(';'), ...filas.map(f => f.join(';'))].join('\r\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="reporte_llamados.csv"');
+      return res.send('\uFEFF' + csv);
+    }
+
+    // PDF
+    const areasFiltro = await pool.query('SELECT id, nombre FROM areas');
+    const nombreArea = areasFiltro.rows.find(a => String(a.id) === String(req.query.area_id));
+    const etiquetas = [];
+    if (req.query.area_id) etiquetas.push(`Área: ${nombreArea ? nombreArea.nombre : req.query.area_id}`);
+    if (req.query.tipo) etiquetas.push(`Tipo: ${req.query.tipo}`);
+    if (req.query.desde) etiquetas.push(`Desde: ${req.query.desde}`);
+    if (req.query.hasta) etiquetas.push(`Hasta: ${req.query.hasta}`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="reporte_llamados.pdf"');
+    doc.pipe(res);
+
+    const ancho = doc.page.width - 100;
+    const x0 = 50;
+    const headers = [
+      { label: 'Área', width: ancho * 0.17 },
+      { label: 'Tipo', width: ancho * 0.09 },
+      { label: 'Origen', width: ancho * 0.10 },
+      { label: 'Descripción', width: ancho * 0.28 },
+      { label: 'Estado', width: ancho * 0.11 },
+      { label: 'Fecha', width: ancho * 0.25 },
+    ];
+
+    doc.font('Helvetica-Bold').fontSize(16).text('Reporte de llamados', { align: 'center' });
+    doc.font('Helvetica').fontSize(9)
+      .text(`Generado el ${new Date().toLocaleString('es-AR')}${etiquetas.length ? '  |  Filtros: ' + etiquetas.join(', ') : ''}`, { align: 'center' });
+    doc.moveDown();
+
+    let y = doc.y;
+    y = dibujarEncabezadosPdf(doc, headers, x0, ancho, y);
+
+    if (result.rows.length === 0) {
+      doc.font('Helvetica').fontSize(10).text('No hay llamados que coincidan con los filtros aplicados.', x0, y + 16);
+    } else {
+      doc.font('Helvetica').fontSize(8);
+      result.rows.forEach(l => {
+        if (y > doc.page.height - 60) {
+          doc.addPage();
+          y = 50;
+          y = dibujarEncabezadosPdf(doc, headers, x0, ancho, y);
+        }
+        const celdas = [
+          truncarParaPdf(l.area_nombre, 26),
+          l.tipo,
+          l.origen,
+          truncarParaPdf(l.descripcion, 60),
+          l.atendido ? 'Atendido' : 'Sin atender',
+          new Date(l.fecha_hora).toLocaleString('es-AR'),
+        ];
+        doc.rect(x0, y, ancho, 16).lineWidth(0.5).stroke('#cccccc');
+        let x = x0;
+        headers.forEach((h, i) => {
+          doc.text(celdas[i], x + 3, y + 5, { width: h.width - 6 });
+          x += h.width;
+        });
+        y += 16;
+      });
+    }
+
+    y += 20;
+    doc.font('Helvetica-Bold').fontSize(10).text(`Total de llamados: ${result.rows.length}`, x0, y);
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al exportar el reporte');
   }
 });
 
@@ -418,6 +567,15 @@ app.post('/api/lecturas', async (req, res) => {
            VALUES ($1, 'sensor', $2, 'emergencia', $3)`,
           [area_id, sensor_id, `${tipo} fuera de rango: ${valor}`]
         );
+
+        const areaResult = await pool.query('SELECT nombre FROM areas WHERE id = $1', [area_id]);
+        notificarAlerta({
+          area: areaResult.rows[0] ? areaResult.rows[0].nombre : String(area_id),
+          tipo: 'emergencia',
+          origen: 'sensor',
+          descripcion: `${tipo} fuera de rango: ${valor} (límites ${valor_min} - ${valor_max})`,
+        }).then(resultado => console.log('Notificación:', JSON.stringify(resultado)))
+          .catch(err => console.error('Error al notificar:', err));
       }
     }
 

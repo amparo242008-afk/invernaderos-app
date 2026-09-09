@@ -45,6 +45,8 @@
         <input type="date" name="desde" value="<%= filtros.desde %>">
         <input type="date" name="hasta" value="<%= filtros.hasta %>">
         <button type="submit">Filtrar</button>
+        <button type="submit" name="formato" value="csv" formaction="/reportes/exportar" class="btn-outline">Exportar CSV</button>
+        <button type="submit" name="formato" value="pdf" formaction="/reportes/exportar" class="btn-outline">Exportar PDF</button>
       </form>
 
       <table class="llamados-table">
@@ -66,7 +68,7 @@
       </table>
 
       <p class="pendiente-nota">
-        Exportar a PDF/CSV: pendiente — próximo paso una vez que esté lo esencial andando.
+        Los botones "Exportar" descargan el reporte actual con los filtros aplicados.
       </p>
 
       <section class="areas-grid" style="margin-top: 24px;">

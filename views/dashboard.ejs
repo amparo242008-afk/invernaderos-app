@@ -36,18 +36,26 @@
         <% areas.forEach(area => { %>
           <article class="area-card">
             <h2><%= area.nombre %></h2>
-            <% if (area.tipo) { %>
-              <p class="area-metrics">
-                <%= area.valor !== null && area.valor !== undefined ? area.valor : '—' %>
-                <span class="area-metric-label"><%= area.tipo === 'temperatura' ? '°C' : area.tipo === 'humedad' ? '%' : area.tipo %></span>
-              </p>
-              <p class="area-status">
-                <span class="dot"></span> En rango
-              </p>
-            <% } else { %>
-              <p class="area-metrics">—</p>
-              <p class="area-status"><span class="dot"></span> Sin sensores</p>
-            <% } %>
+            <div class="area-metrics-row">
+              <div class="area-metric-block">
+                <p class="area-metrics">
+                  <%= area.temp_val !== null && area.temp_val !== undefined ? area.temp_val : '—' %>
+                  <span class="area-metric-label">°C</span>
+                </p>
+                <p class="area-metric-name">Temperatura</p>
+              </div>
+              <div class="area-metric-block">
+                <p class="area-metrics">
+                  <%= area.hum_val !== null && area.hum_val !== undefined ? area.hum_val : '—' %>
+                  <span class="area-metric-label">%</span>
+                </p>
+                <p class="area-metric-name">Humedad</p>
+              </div>
+            </div>
+            <p class="area-status">
+              <span class="dot"></span>
+              <%= area.temp_val !== null || area.hum_val !== null ? 'En rango' : 'Sin datos' %>
+            </p>
             <p class="area-responsable">
               <%= area.responsable_nombre ? `Responsable: ${area.responsable_nombre} ${area.responsable_apellido}` : 'Sin responsable asignado' %>
             </p>

@@ -49,11 +49,54 @@ Insertá manualmente en pgAdmin:
 - Una fila en `sensores` apuntando a esa área (`area_id`, `tipo`: temperatura)
 - Una fila en `rangos_config` con `valor_min` y `valor_max` para esa área/tipo
 
+## 7. Desplegar en Render (para que funcione sin "localhost")
+El proyecto ya trae un `render.yaml` (blueprint). Pasos:
+
+1. Subí el repo a GitHub (dejalo en privado: la base tiene datos personales).
+2. Entrá a [render.com](https://render.com) con tu cuenta de GitHub.
+3. Botón **New → Blueprint**, elegí el repo, y Render arma solo:
+   - la base PostgreSQL (`invernaderos-db`)
+   - el servidor web (`invernaderos-app`) que al arrancar corre
+     `node db-setup.js` (crea el esquema) y después `npm start`.
+4. En **Environment** del servicio web, definí las variables que hagan falta:
+   - `ADMIN_PASSWORD`: la contraseña del usuario `admin` inicial
+   - Las de alertas si querés (ver tabla de más arriba)
+5. Te va a quedar un URL tipo `https://invernaderos-app.onrender.com`.
+6. Cargá en el ESP32 ese URL en `API_URL` dentro del `.ino`, por ejemplo:
+   `https://invernaderos-app.onrender.com/api/lecturas`
+   (recordá que el ESP32 con HTTPS necesita el certificado CA de Let's Encrypt).
+
+Windows (local) no necesita nada especial: `node db-setup.js` también sirve
+para crear/verificar el esquema en tu PC sin tocar pgAdmin.
+
+## Restaurar el backup completo en Render (opcional)
+Si querés que la base de Render tenga todos tus datos (empleados, sensores,
+usuarios con sus contraseñas), abrí en tu PC pgAdmin → conectar a la base de
+Render con el "Internal Database URL" que te da Render → clic derecho sobre
+`invernaderos` → **Restore…** → elegí `database/invernaderos_backup.sql`.
+Si psql avisa de la línea `\restrict`, borrala del archivo y reintentá.
+
 ## Qué le falta a esto todavía (para seguir después de la entrega urgente)
-- Editar empleados (hoy solo se puede agregar y eliminar)
-- Pantalla de reportes con gráficos y exportación a PDF/CSV
-- Conectar el ESP32 real (el endpoint `POST /api/lecturas` ya está listo
-  y probado, falta cargar el `.ino` en la placa)
+- ~~Editar empleados~~ ✓ (ya se puede)
+- ~~Pantalla de reportes con gráficos y exportación a PDF/CSV~~ ✓
+- ~~Conectar el ESP32 real~~ ✓ (el endpoint `POST /api/lecturas` está listo y probado)
+- Alertas externas por Telegram / Email / WhatsApp ✓ (las emergencias notifican si configurás las variables)
+
+## Exportación de reportes a PDF/CSV
+En la pantalla **Reportes** hay dos botones: "Exportar CSV" y "Exportar PDF".
+Descargan los llamados con los mismos filtros que tengas aplicados (área, tipo y fechas).
+
+## Alertas por Email / WhatsApp
+Las alertas se disparan cuando un sensor queda fuera de rango o se reporta una
+emergencia a mano. Hoy solo se guardaban en la tabla `llamados`; ahora además se
+notifica por los canales que tengas configurados en `.env` (todo es opcional):
+
+| Canal | Variables necesarias |
+|-------|----------------------|
+| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `EMAIL_TO` (sirve Gmail con contraseña de aplicación) |
+| WhatsApp | `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO` (sandbox gratis de Twilio) |
+
+Si la variable no está configurada, ese canal simplemente se saltea.
 
 
 
