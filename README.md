@@ -80,23 +80,26 @@ Si psql avisa de la línea `\restrict`, borrala del archivo y reintentá.
 - ~~Editar empleados~~ ✓ (ya se puede)
 - ~~Pantalla de reportes con gráficos y exportación a PDF/CSV~~ ✓
 - ~~Conectar el ESP32 real~~ ✓ (el endpoint `POST /api/lecturas` está listo y probado)
-- Alertas externas por Telegram / Email / WhatsApp ✓ (las emergencias notifican si configurás las variables)
+- Alertas externas por Email ✓ (las emergencias notifican si configurás las variables)
 
 ## Exportación de reportes a PDF/CSV
 En la pantalla **Reportes** hay dos botones: "Exportar CSV" y "Exportar PDF".
 Descargan los llamados con los mismos filtros que tengas aplicados (área, tipo y fechas).
 
-## Alertas por Email / WhatsApp
+## Alertas por Email
 Las alertas se disparan cuando un sensor queda fuera de rango o se reporta una
-emergencia a mano. Hoy solo se guardaban en la tabla `llamados`; ahora además se
-notifica por los canales que tengas configurados en `.env` (todo es opcional):
+emergencia a mano. Las notificaciones se envían por email si configurás las variables en `.env`:
 
-| Canal | Variables necesarias |
-|-------|----------------------|
-| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `EMAIL_TO` (sirve Gmail con contraseña de aplicación) |
-| WhatsApp | `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO` (sandbox gratis de Twilio) |
+| Variable | Descripción |
+|----------|-------------|
+| `SMTP_HOST` | Servidor SMTP (ej: `smtp.gmail.com`) |
+| `SMTP_PORT` | Puerto (587 o 465) |
+| `SMTP_USER` | Usuario SMTP |
+| `SMTP_PASS` | Contraseña SMTP |
+| `EMAIL_FROM` | Email remitente |
+| `EMAIL_TO` | Email destinatario |
 
-Si la variable no está configurada, ese canal simplemente se saltea.
+Si la variable no está configurada, el envío simplemente se saltea.
 
 
 

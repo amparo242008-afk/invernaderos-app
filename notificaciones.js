@@ -27,42 +27,11 @@ function enviarEmail(asunto, texto) {
     .catch(err => `error: ${err.message}`);
 }
 
-function enviarWhatsApp(mensaje) {
-  const sid = process.env.TWILIO_SID;
-  const token = process.env.TWILIO_TOKEN;
-  const desde = process.env.TWILIO_WHATSAPP_FROM;
-  const para = process.env.TWILIO_WHATSAPP_TO;
-  if (!sid || !token || !desde || !para) return Promise.resolve('no configurado');
-  const body = new URLSearchParams({
-    To: `whatsapp:${para}`,
-    From: `whatsapp:${desde}`,
-    Body: mensaje,
-  });
-  const auth = Buffer.from(`${sid}:${token}`).toString('base64');
-  return fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${auth}`,
-    },
-    body: body.toString(),
-  })
-    .then(async r => {
-      if (r.ok) return 'ok';
-      const data = await r.json().catch(() => null);
-      return `error HTTP ${r.status}: ${data && data.message}`;
-    })
-    .catch(err => `error: ${err.message}`);
-}
-
 async function notificarAlerta(datos) {
   const mensaje = construirMensaje(datos);
   const asunto = `⚠️ Alerta: ${datos.tipo || 'emergencia'} — ${datos.area || 'Invernaderos'}`;
-  const [email, whatsapp] = await Promise.all([
-    enviarEmail(asunto, mensaje),
-    enviarWhatsApp(mensaje),
-  ]);
-  return { email, whatsapp };
+  const email = await enviarEmail(asunto, mensaje);
+  return { email };
 }
 
 module.exports = { notificarAlerta };
